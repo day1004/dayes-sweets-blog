@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Daye's Sweets Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Comic Neue', cursive; background-color:#FFF8E7; color:#4B3B2D; }
+
+/* 배너 */
+header { background-color:#FF91A4; padding:25px; text-align:center; font-size:2em; font-weight:bold; color:white; }
+
+/* 2:8 레이아웃 */
+.container { display:flex; min-height:90vh; }
+nav { flex:2; background-color:#FFD1DC; padding:20px; }
+main { flex:8; padding:20px; background-color:#FFFBF0; display:flex; flex-direction:column; align-items:center; }
+
+/* 메뉴 */
+nav ul { list-style:none; }
+nav li { margin-bottom:12px; cursor:pointer; position:relative; font-size:0.95em; }
+nav li:hover { color:#FF91A4; }
+nav li ul { display:none; margin-top:5px; margin-left:15px; }
+nav li:hover > ul { display:block; }
+
+/* 글 박스 */
+.post, #postDetail, #postForm, #loginForm {
+    width:90%; 
+    background-color:#FFF0F5;
+    border:1px solid #FFD1DC;
+    border-radius:10px;
+    padding:15px;
+    margin-bottom:20px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 이미지 */
+.post img, #postDetail img { max-width:100%; border-radius:8px; margin-bottom:10px; }
+
+/* 로그인 & 작성 폼 */
+#loginForm input, #postForm input, #postForm textarea, #postForm select { 
+    margin-bottom:10px; padding:5px; width:100%; border-radius:5px; border:1px solid #CCC; 
+}
+#loginForm button, #postForm button, .editBtn, .deleteBtn { 
+    padding:5px 10px; background-color:#FF91A4; border:none; border-radius:5px; cursor:pointer; color:white; font-weight:bold; margin-right:5px; font-size:0.8em;
+}
+
+/* 갤러리 이미지 */
+.gallery-img {
+    width:150px; height:150px; background-color:#FFC0CB;
+    display:inline-block; margin:10px; border-radius:8px;
+    cursor:pointer; vertical-align:top; border:2px solid #FFD1DC;
+    background-size:cover; background-position:center;
+}
+</style>
+</head>
+<body>
+<header>Daye's Sweets Blog</header>
+<div class="container">
+    <nav>
+        <ul>
+            <li data-category="all">Home</li>
+            <li data-category="today">Today's Sweets</li>
+            <li>Categories
+                <ul>
+                    <li>Seasonal Specials
+                        <ul>
+                            <li data-category="Halloween">Halloween</li>
+                            <li data-category="Christmas">Christmas</li>
+                        </ul>
+                    </li>
+                    <li data-category="Drinks">Drinks</li>
+                    <li data-category="Bread">Bread</li>
+                    <li data-category="Cookie">Cookie</li>
+                    <li data-category="Cake">Cake</li>
+                    <li data-category="Chocolate">Chocolate</li>
+                    <li data-category="Ice Cream">Ice Cream</li>
+                    <li data-category="Candy">Candy</li>
+                    <li data-category="Jelly">Jelly</li>
+                    <li data-category="Others">Others</li>
+                </ul>
+            </li>
+            <li data-category="Gallery">Gallery</li>
+            <li data-category="Daily Life">Daily Life</li>
+            <li data-category="Favorite Shops">Favorite Shops</li>
+            <li data-category="Recipes">Recipes</li>
+            <li id="writePostBtn">Write a Post</li>
+        </ul>
+    </nav>
+    <main>
+        <div id="loginForm">
+            <h3>Login Required</h3>
+            <input type="text" id="username" placeholder="ID">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login('write')">Login</button>
+            <p id="loginMessage" style="color:red;"></p>
+        </div>
+
+        <div id="postForm">
+            <h3>Create/Edit a Post</h3>
+            <input type="text" id="postTitle" placeholder="Post Title">
+            <input type="file" id="postImage" accept="image/*">
+            <textarea id="postContent" rows="5" placeholder="Write your content here... (Korean/English)"></textarea>
+            <label>Category:</label>
+            <select id="postCategory" multiple>
+                <option value="Halloween">Halloween</option>
+                <option value="Christmas">Christmas</option>
+                <option value="Drinks">Drinks</option>
+                <option value="Bread">Bread</option>
+                <option value="Cookie">Cookie</option>
+                <option value="Cake">Cake</option>
+                <option value="Chocolate">Chocolate</option>
+                <option value="Ice Cream">Ice Cream</option>
+                <option value="Candy">Candy</option>
+                <option value="Jelly">Jelly</option>
+                <option value="Others">Others</option>
+            </select>
+            <button onclick="submitPost()">Save</button>
+            <button onclick="cancelEdit()">Cancel</button>
+        </div>
+
+        <div id="postDetail"></div>
+        <div id="galleryView"></div>
+    </main>
+</div>
+
+<script>
+let isLoggedIn = false;
+let editingIndex = null;
+
+const writeBtn = document.getElementById('writePostBtn');
+const loginForm = document.getElementById('loginForm');
+const postForm = document.getElementById('postForm');
+const loginMessage = document.getElementById('loginMessage');
+const postDetail = document.getElementById('postDetail');
+const galleryView = document.getElementById('galleryView');
+
+let posts = [
+    {title:"Example 1", content:"예시", categories:["Halloween"], imageUrl:""},
+    {title:"Example 2", content:"예시", categories:["Christmas"], imageUrl:""},
+    {title:"Example 3", content:"예시", categories:["Cake"], imageUrl:""},
+    {title:"Example 4", content:"예시", categories:["Cookie"], imageUrl:""},
+];
+
+document.querySelectorAll('nav li[data-category]').forEach(item=>{
+    item.addEventListener('click', ()=>{
+        const category = item.getAttribute('data-category');
+        displayGallery(category);
+    });
+});
+
+writeBtn.addEventListener('click', ()=>{
+    loginForm.style.display='block';
+    postForm.style.display='none';
+    editingIndex = null;
+});
+
+function login(action){
+    const username=document.getElementById('username').value;
+    const password=document.getElementById('password').value;
+    if(username==='day' && password==='1004'){
+        isLoggedIn = true;
+        loginForm.style.display='none';
+        loginMessage.textContent='';
+        if(action==='write' || action==='edit'){
+            postForm.style.display='block';
+        }
+    } else {
+        loginMessage.textContent='Incorrect ID or Password';
+    }
+}
+
+function submitPost(){
+    const title=document.getElementById('postTitle').value;
+    const content=document.getElementById('postContent').value;
+    const categorySelect=document.getElementById('postCategory');
+    const selectedCategories=Array.from(categorySelect.selectedOptions).map(opt=>opt.value);
+    const imageFile=document.getElementById('postImage').files[0];
+    let imageUrl='';
+    if(imageFile){
+        imageUrl=URL.createObjectURL(imageFile);
+    }
+    if(editingIndex !== null){
+        posts[editingIndex] = {title, content, categories:selectedCategories, imageUrl};
+        editingIndex = null;
+    } else {
+        posts.push({title, content, categories:selectedCategories, imageUrl});
+    }
+    clearForm();
+    displayGallery('all');
+}
+
+function cancelEdit(){
+    editingIndex = null;
+    clearForm();
+}
+
+function displayGallery(filterCategory){
+    postDetail.style.display='none';
+    galleryView.style.display='block';
+    galleryView.innerHTML='';
+    const filtered = posts.filter(p=>filterCategory==='all' || p.categories.includes(filterCategory));
+    filtered.forEach((p,index)=>{
+        const imgDiv=document.createElement('div');
+        imgDiv.className='gallery-img';
+        imgDiv.style.backgroundColor = p.imageUrl ? '' : '#FFC0CB';
+        if(p.imageUrl) imgDiv.style.backgroundImage=`url(${p.imageUrl})`;
+        imgDiv.addEventListener('click', ()=>showPostDetail(index));
+        galleryView.appendChild(imgDiv);
+    });
+}
+
+function showPostDetail(index){
+    galleryView.style.display='none';
+    postDetail.style.display='block';
+    const post=posts[index];
+    postDetail.innerHTML=`
+        <h2>${post.title}</h2>
+        ${post.imageUrl ? `<img src="${post.imageUrl}">` : `<div style="width:100%;height:300px;background:#FFC0CB;border-radius:8px;"></div>`}
+        <p>${post.content}</p>
+        <p><strong>Categories:</strong> ${post.categories.join(', ')}</p>
+        ${isLoggedIn ? `<button class="editBtn" onclick="editPost(${index})">Edit</button><button class="deleteBtn" onclick="deletePost(${index})">Delete</button>` : ''}
+    `;
+}
+
+function editPost(index){
+    if(!isLoggedIn){
+        loginForm.style.display='block';
+        editingIndex = index;
+        return;
+    }
+    editingIndex = index;
+    const post = posts[index];
+    postForm.style.display='block';
+    postDetail.style.display='none';
+    document.getElementById('postTitle').value = post.title;
+    document.getElementById('postContent').value = post.content;
+    const categorySelect = document.getElementById('postCategory');
+    Array.from(categorySelect.options).forEach(opt=> opt.selected = post.categories.includes(opt.value));
+}
+
+function deletePost(index){
+    if(!isLoggedIn){
+        loginForm.style.display='block';
+        return;
+    }
+    if(confirm('Do you really want to delete this post?')){
+        posts.splice(index,1);
+        postDetail.style.display='none';
+        displayGallery('all');
+    }
+}
+
+function clearForm(){
+    document.getElementById('postTitle').value='';
+    document.getElementById('postContent').value='';
+    document.getElementById('postImage').value='';
+    document.getElementById('postCategory').selectedIndex=-1;
+    postForm.style.display='none';
+}
+
+displayGallery('all');
+</script>
+</body>
+</html>
