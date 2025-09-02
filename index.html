@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Daye's Sweets Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Press Start 2P',monospace;background:#FFF8E7;color:#4B3B2D;}
+header{background:#FF91A4;padding:120px 20px;text-align:center;font-size:2.8em;color:white;}
+.container{display:flex;min-height:90vh;}
+nav{flex:2;min-width:200px;background:#FFD1DC;padding:20px;}
+nav ul{list-style:none;padding-left:0;}
+nav li{margin-bottom:12px;cursor:pointer;font-size:0.95em;position:relative;}
+nav li ul{display:none;list-style:none;padding-left:15px;margin-top:5px;background:#FFE4E1;border-radius:5px;}
+nav li ul li{margin-bottom:8px;}
+main{flex:8;background:#FFFBF0;padding:20px;display:flex;flex-direction:column;align-items:center;}
+#postsContainer{display:flex;flex-wrap:wrap;justify-content:flex-start;width:100%;margin-bottom:30px;}
+.post{width:23%;margin:10px;border:1px solid #FFD1DC;border-radius:10px;background:#FFF0F5;cursor:pointer;padding:10px;}
+.post img{width:100%;border-radius:8px;margin-bottom:5px;}
+#postDetail{display:none;flex-direction:column;align-items:center;position:relative;margin-bottom:30px;}
+.edit-delete{position:absolute;right:10px;bottom:10px;}
+textarea,input,select{width:100%;padding:5px;margin-bottom:10px;border-radius:5px;border:1px solid #FFD1DC;font-family:'Press Start 2P',monospace;}
+button{cursor:pointer;background:#FF91A4;color:white;border:none;border-radius:5px;padding:8px 12px;margin:5px 0;}
+button:hover{background:#FF6F91;}
+.hidden{display:none;}
+#writeBtn{margin-bottom:20px;}
+#loginForm{margin-top:50px;width:100%;max-width:400px;padding:20px;border:1px solid #FFD1DC;border-radius:10px;background:#FFF0F5;}
+#postForm{width:100%;max-width:1000px;padding:50px;border:1px solid #FFD1DC;border-radius:10px;margin-top:50px;background:#FFF0F5;}
+#postForm textarea{height:500px;}
+.page-btn{margin:2px;padding:5px 8px;border:none;border-radius:5px;background:#FF91A4;color:white;cursor:pointer;}
+.page-btn:hover{background:#FF6F91;}
+@media screen and (max-width:1024px){ .post{width:31%;} }
+@media screen and (max-width:768px){ .container{flex-direction:column;} nav{width:100%;} main{width:100%;} .post{width:48%;} }
+@media screen and (max-width:480px){ .post{width:100%;} button{width:100%;} }
+</style>
+</head>
+<body>
+
+<header>Daye's Sweets Blog</header>
+
+<div class="container">
+  <nav>
+    <ul>
+      <li id="homeMenu">Home</li>
+      <li id="todaysMenu">Today's Sweets</li>
+      <li>Categories
+        <ul>
+          <li data-category="Seasonal Specials">Seasonal Specials</li>
+          <li data-category="Drinks">Drinks</li>
+          <li data-category="Bread">Bread</li>
+          <li data-category="Cookie">Cookie</li>
+          <li data-category="Cake">Cake</li>
+          <li data-category="Chocolate">Chocolate</li>
+          <li data-category="Ice Cream">Ice Cream</li>
+          <li data-category="Candy">Candy</li>
+          <li data-category="Jelly">Jelly</li>
+          <li data-category="Others">Others</li>
+        </ul>
+      </li>
+      <li id="galleryMenu">Gallery</li>
+      <li id="dailyLifeMenu">Daily Life</li>
+      <li id="favoriteMenu">Favorite Shops</li>
+      <li id="recipesMenu">Recipes</li>
+      <li id="guestbookMenu">Guestbook</li>
+    </ul>
+  </nav>
+
+  <main>
+    <div id="postsContainer"></div>
+    <div id="pagination" style="margin-bottom:20px;"></div>
+
+    <div id="postDetail" class="hidden">
+      <img id="detailImg" src="" alt="">
+      <h3 id="detailTitle"></h3>
+      <p id="detailContent"></p>
+      <div class="edit-delete hidden">
+        <button id="editBtn">Edit</button>
+        <button id="deleteBtn">Delete</button>
+      </div>
+      <button onclick="closeDetail()">Back</button>
+    </div>
+
+    <button id="writeBtn">Write a post</button>
+
+    <div id="loginForm" class="hidden">
+      <h3>Login</h3>
+      <input type="text" id="username" placeholder="Username"><br>
+      <input type="password" id="password" placeholder="Password"><br>
+      <button onclick="login()">Login</button>
+      <button onclick="closeLogin()">Cancel</button>
+    </div>
+
+    <div id="postForm" class="hidden">
+      <h3>Write a Post</h3>
+      <input type="text" id="postTitle" placeholder="Title"><br>
+      <textarea id="postContent" placeholder="Content"></textarea><br>
+      <input type="file" id="postImgFile" accept="image/*"><br>
+      <select id="postCategory">
+        <option>Seasonal Specials</option>
+        <option>Drinks</option>
+        <option>Bread</option>
+        <option>Cookie</option>
+        <option>Cake</option>
+        <option>Chocolate</option>
+        <option>Ice Cream</option>
+        <option>Candy</option>
+        <option>Jelly</option>
+        <option>Others</option>
+      </select><br>
+      <button onclick="savePost()">Save</button>
+      <button onclick="cancelPost()">Cancel</button>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBSoB4NomotkzPQgymHGqDhuy7POreIVzg",
+  authDomain: "daye-sweets-blog.firebaseapp.com",
+  projectId: "daye-sweets-blog",
+  storageBucket: "daye-sweets-blog.appspot.com",
+  messagingSenderId: "175818595197",
+  appId: "1:175818595197:web:f2290dfcf5321bf1930a14"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+let loggedIn=false;
+let currentPostId=null;
+let currentCategory=null;
+let currentPage=1;
+
+const postsContainer=document.getElementById("postsContainer");
+const pagination=document.getElementById("pagination");
+const postDetail=document.getElementById("postDetail");
+
+// Login & Write
+document.getElementById("writeBtn").addEventListener("click",()=>{
+  document.getElementById("loginForm").style.display="block";
+  document.getElementById("loginForm").scrollIntoView({behavior:"smooth"});
+});
+function closeLogin(){ document.getElementById("loginForm").style.display="none"; }
+function cancelPost(){ document.getElementById("postForm").style.display="none"; }
+
+function login(){
+  const u=document.getElementById("username").value;
+  const p=document.getElementById("password").value;
+  if(u==="day" && p==="1004"){
+    loggedIn=true;
+    alert("Login success!");
+    document.getElementById("loginForm").style.display="none";
+    document.getElementById("postForm").style.display="block";
+    document.getElementById("postForm").scrollIntoView({behavior:"smooth"});
+  } else alert("Incorrect ID or password");
+}
+
+// Save Post
+async function savePost(){
+  const title=document.getElementById("postTitle").value;
+  const content=document.getElementById("postContent").value;
+  const category=document.getElementById("postCategory").value;
+  const fileInput=document.getElementById("postImgFile");
+
+  if(!title || !content || fileInput.files.length===0){ alert("Title, Content, and Image required"); return; }
+
+  const file=fileInput.files[0];
+  const storageRef=ref(storage,'images/'+Date.now()+'_'+file.name);
+  await uploadBytes(storageRef,file);
+  const imgURL=await getDownloadURL(storageRef);
+
+  await addDoc(collection(db,"posts"),{
+    title:title,
+    content:content,
+    category:category,
+    img:imgURL,
+    author:"day",
+    created:Date.now()
+  });
+
+  document.getElementById("postForm").style.display="none";
+  document.getElementById("postTitle").value="";
+  document.getElementById("postContent").value="";
+  document.getElementById("postImgFile").value="";
+  loadPosts(currentCategory,1);
+}
+
+// Load Posts
+async function loadPosts(category,page){
+  currentCategory=category;
+  currentPage=page;
+  postsContainer.innerHTML="";
+  pagination.innerHTML="";
+
+  let q = await getDocs(collection(db,"posts"));
+  let allPosts = [];
+  q.forEach(doc=>{ const d=doc.data(); d.id=doc.id; allPosts.push(d); });
+  allPosts.sort((a,b)=>b.created - a.created);
+
+  if(category) allPosts=allPosts.filter(p=>p.category===category);
+
+  const pageSize=16;
+  const totalPage=Math.ceil(allPosts.length/pageSize);
+  const pagedPosts=allPosts.slice((page-1)*pageSize,page*pageSize);
+
+  let rowDiv=null;
+  pagedPosts.forEach((p,i)=>{
+    if(i%4===0){
+      rowDiv=document.createElement("div");
+      rowDiv.style.display="flex"; rowDiv.style.justifyContent="space-between"; rowDiv.style.width="100%"; rowDiv.style.marginBottom="20px";
+      postsContainer.appendChild(rowDiv);
+    }
+    const div=document.createElement("div");
+    div.className="post";
+    div.innerHTML=`<img src="${p.img}" alt=""><h3>${p.title}</h3>`;
+    div.onclick=()=>viewPost(p);
+    rowDiv.appendChild(div);
+  });
+
+  for(let i=1;i<=totalPage;i++){
+    const btn=document.createElement("button");
+    btn.className="page-btn";
+    btn.innerText=i+"/"+totalPage;
+    btn.onclick=()=>loadPosts(category,i);
+    pagination.appendChild(btn);
+  }
+}
+
+// View post
+function viewPost(p){
+  currentPostId=p.id;
+  document.getElementById("detailImg").src=p.img;
+  document.getElementById("detailTitle").innerText=p.title;
+  document.getElementById("detailContent").innerText=p.content;
+  postDetail.style.display="flex";
+  document.querySelector(".edit-delete").style.display=loggedIn?"block":"none";
+  window.scrollTo({ top: postDetail.offsetTop-20, behavior:'smooth' });
+}
+function closeDetail(){ postDetail.style.display="none"; }
+
+// Edit/Delete
+document.getElementById("editBtn").addEventListener("click",async()=>{
+  if(!currentPostId) return;
+  const newTitle=prompt("New title?");
+  const newContent=prompt("New content?");
+  if(newTitle && newContent){
+    await updateDoc(doc(db,"posts",currentPostId),{title:newTitle, content:newContent});
+    loadPosts(currentCategory,currentPage);
+    closeDetail();
+  }
+});
+document.getElementById("deleteBtn").addEventListener("click",async()=>{
+  if(!currentPostId) return;
+  if(confirm("Delete this post?")){
+    await deleteDoc(doc(db,"posts",currentPostId));
+    loadPosts(currentCategory,currentPage);
+    closeDetail();
+  }
+});
+
+// Category menu toggle
+document.querySelectorAll('nav li').forEach(li=>{
+  const subUl = li.querySelector('ul');
+  if(subUl){
+    li.addEventListener('click', e=>{
+      e.stopPropagation();
+      document.querySelectorAll('nav li ul').forEach(u=>{ if(u!==subUl) u.style.display='none'; });
+      subUl.style.display = (subUl.style.display==='block')?'none':'block';
+    });
+  }
+});
+document.addEventListener('click', ()=>{ document.querySelectorAll('nav li ul').forEach(u=>u.style.display='none'); });
+
+// Category click
+document.querySelectorAll('nav li ul li').forEach(li=>{
+  li.addEventListener('click', e=>{
+    const cat = li.dataset.category;
+    loadPosts(cat,1);
+    e.stopPropagation();
+  });
+});
+
+// Gallery click
+document.getElementById("galleryMenu").addEventListener('click',()=>{ loadPosts(null,1); });
+
+// Load latest 8 posts for Home on start
+loadPosts(null,1);
+
+</script>
+</body>
+</html>
