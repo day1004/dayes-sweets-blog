@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Daye's Sweets Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+@import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2107@1.1/BMJUA.woff2') format('woff2');
+
+/* 기본 초기화 */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Press Start 2P','BMJUA',monospace; background:#FFF8E7; color:#4B3B2D; overflow-x:hidden; }
+
+/* 헤더 */
+header { background:#FF91A4; padding:25px; text-align:center; font-size:2em; font-weight:bold; color:white; }
+
+/* 컨테이너 */
+.container { display:flex; width:100%; min-height:90vh; }
+
+/* 메뉴 */
+nav { flex:2; min-width:200px; background:#FFD1DC; padding:20px; }
+nav ul { list-style:none; }
+nav li { margin-bottom:12px; cursor:pointer; font-size:0.95em; position:relative; }
+nav li:hover { color:#FF91A4; }
+nav li ul { display:none; margin-top:5px; margin-left:15px; }
+nav li:hover > ul { display:block; }
+
+/* 메인 콘텐츠 */
+main { flex:8; padding:20px; background:#FFFBF0; display:flex; flex-direction:column; align-items:center; }
+
+/* 포스트 리스트 */
+#postsContainer { display:flex; flex-wrap:wrap; justify-content:space-between; width:100%; }
+.post { width:23%; cursor:pointer; background:#FFF0F5; border:1px solid #FFD1DC; border-radius:10px; padding:15px; margin-bottom:20px; box-shadow:0 2px 5px rgba(0,0,0,0.1); position:relative; }
+.post img { max-width:100%; border-radius:8px; margin-bottom:10px; }
+
+/* 글 상세보기 */
+#postDetail { display:none; flex-direction:column; align-items:center; position:relative; }
+.edit-delete { position:absolute; right:10px; bottom:10px; }
+textarea, input, select { width:100%; padding:5px; margin-bottom:10px; border-radius:5px; border:1px solid #FFD1DC; }
+
+/* 버튼 */
+button { cursor:pointer; background:#FF91A4; color:white; border:none; border-radius:5px; padding:5px 10px; margin-left:5px; }
+button:hover { background:#FF6F91; }
+
+/* 숨김 */
+.hidden { display:none; }
+
+/* 반응형 */
+@media screen and (max-width:1024px){ .post{ width:31%; } }
+@media screen and (max-width:768px){ 
+  .container{ flex-direction:column; } 
+  nav{ width:100%; flex:none; } 
+  main{ width:100%; flex:none; } 
+  .post{ width:48%; margin-bottom:15px; } 
+}
+@media screen and (max-width:480px){ .post{ width:100%; margin-bottom:10px; } }
+
+</style>
+</head>
+<body>
+
+<header>Daye's Sweets Blog</header>
+
+<div class="container">
+  <nav>
+    <ul>
+      <li>Home</li>
+      <li>Today's Sweets</li>
+      <li>Categories
+        <ul>
+          <li>Seasonal Specials</li>
+          <li>Drinks</li>
+          <li>Bread</li>
+          <li>Cookie</li>
+          <li>Cake</li>
+          <li>Chocolate</li>
+          <li>Ice Cream</li>
+          <li>Candy</li>
+          <li>Jelly</li>
+          <li>Others</li>
+        </ul>
+      </li>
+      <li>Gallery</li>
+      <li>Daily Life</li>
+      <li>Favorite Shops</li>
+      <li>Recipes</li>
+      <li>Guestbook</li>
+    </ul>
+  </nav>
+
+  <main>
+    <div id="postsContainer">
+      <div class="post" onclick="viewPost(0)">
+        <img src="https://via.placeholder.com/400x200/FFC0CB/FFF" alt="예시 이미지">
+        <h3>예시 글 1</h3>
+        <p>예시 내용...</p>
+      </div>
+      <div class="post" onclick="viewPost(1)">
+        <img src="https://via.placeholder.com/400x200/FFC0CB/FFF" alt="예시 이미지">
+        <h3>예시 글 2</h3>
+        <p>예시 내용...</p>
+      </div>
+      <div class="post" onclick="viewPost(2)">
+        <img src="https://via.placeholder.com/400x200/FFC0CB/FFF" alt="예시 이미지">
+        <h3>예시 글 3</h3>
+        <p>예시 내용...</p>
+      </div>
+      <div class="post" onclick="viewPost(3)">
+        <img src="https://via.placeholder.com/400x200/FFC0CB/FFF" alt="예시 이미지">
+        <h3>예시 글 4</h3>
+        <p>예시 내용...</p>
+      </div>
+    </div>
+
+    <div id="postDetail" class="hidden">
+      <img id="detailImg" src="" alt="">
+      <h3 id="detailTitle"></h3>
+      <p id="detailContent"></p>
+      <div class="edit-delete hidden">
+        <button onclick="editPost()">Edit</button>
+        <button onclick="deletePost()">Delete</button>
+      </div>
+      <button onclick="closeDetail()">Back</button>
+    </div>
+
+    <button onclick="showLogin()">Write a post</button>
+
+    <div id="loginForm" class="hidden">
+      <h3>Login</h3>
+      <input type="text" id="username" placeholder="Username"><br>
+      <input type="password" id="password" placeholder="Password"><br><br>
+      <button onclick="login()">Login</button>
+      <button onclick="closeLogin()">Cancel</button>
+    </div>
+
+    <div id="postForm" class="hidden">
+      <h3>Write a Post</h3>
+      <input type="text" id="postTitle" placeholder="Title"><br>
+      <textarea id="postContent" placeholder="Content"></textarea><br>
+      <input type="text" id="postImg" placeholder="Image URL"><br>
+      <select id="postCategory">
+        <option>Seasonal Specials</option>
+        <option>Drinks</option>
+        <option>Bread</option>
+        <option>Cookie</option>
+        <option>Cake</option>
+        <option>Chocolate</option>
+        <option>Ice Cream</option>
+        <option>Candy</option>
+        <option>Jelly</option>
+        <option>Others</option>
+      </select><br>
+      <button onclick="savePost()">Save</button>
+      <button onclick="cancelPost()">Cancel</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+let loggedIn=false;
+let currentPostIndex=null;
+const posts=[
+  {title:"예시 글 1",content:"예시 내용...",img:"https://via.placeholder.com/400x200/FFC0CB/FFF",author:"day"},
+  {title:"예시 글 2",content:"예시 내용...",img:"https://via.placeholder.com/400x200/FFC0CB/FFF",author:"day"},
+  {title:"예시 글 3",content:"예시 내용...",img:"https://via.placeholder.com/400x200/FFC0CB/FFF",author:"day"},
+  {title:"예시 글 4",content:"예시 내용...",img:"https://via.placeholder.com/400x200/FFC0CB/FFF",author:"day"}
+];
+
+function showLogin(){ document.getElementById("loginForm").classList.remove("hidden"); }
+function closeLogin(){ document.getElementById("loginForm").classList.add("hidden"); }
+function login(){
+  const user=document.getElementById("username").value;
+  const pw=document.getElementById("password").value;
+  if(user==="day" && pw==="1004"){ 
+    loggedIn=true; 
+    alert("Login successful
