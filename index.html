@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Daye's Sweets Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body{margin:0; font-family:'Press Start 2P', monospace; background:#FFF8E7; color:#4B3B2D;}
+header{background:#FF91A4; padding:120px 20px; text-align:center; font-size:3em; color:white;}
+.container{display:flex; min-height:90vh;}
+nav{flex:2; min-width:200px; background:#FFD1DC; padding:20px;}
+nav ul{list-style:none; padding:0;}
+nav li{margin-bottom:12px; cursor:pointer; font-size:0.95em; position:relative;}
+nav li ul{display:none; position:absolute; left:100%; top:0; background:#FFD1DC; padding:10px; list-style:none; border-radius:5px;}
+nav li:hover>ul{display:block;}
+main{flex:8; background:#FFFBF0; padding:20px; display:flex; flex-direction:column; align-items:center;}
+#postsContainer{display:flex; flex-wrap:wrap; justify-content:flex-start; width:100%; margin-bottom:30px;}
+.post{width:23%; margin:10px; border:1px solid #FFD1DC; border-radius:10px; background:#FFF0F5; cursor:pointer; padding:10px;}
+.post img{width:100%; border-radius:8px; margin-bottom:5px;}
+#postDetail{display:none; flex-direction:column; align-items:center; position:relative; margin-bottom:30px;}
+.edit-delete{position:absolute; right:10px; bottom:10px;}
+textarea,input,select{width:100%; padding:5px; margin-bottom:10px; border-radius:5px; border:1px solid #FFD1DC; font-family:'Press Start 2P', monospace;}
+button{cursor:pointer; background:#FF91A4; color:white; border:none; border-radius:5px; padding:8px 12px; margin:5px 0;}
+button:hover{background:#FF6F91;}
+.hidden{display:none;}
+#writeBtn{margin-bottom:20px;}
+#loginForm,#postForm{display:none;}
+#loginForm{margin-top:50px; width:100%; max-width:400px; padding:20px; border:1px solid #FFD1DC; border-radius:10px; background:#FFF0F5;}
+#postForm{width:100%; max-width:1000px; padding:50px; border:1px solid #FFD1DC; border-radius:10px; margin-top:50px; background:#FFF0F5;}
+#postForm textarea{height:500px;}
+.pagination{margin-top:10px;}
+.pagination button{margin:0 5px;}
+@media screen and (max-width:1024px){ .post{width:31%;} }
+@media screen and (max-width:768px){ .container{flex-direction:column;} nav{width:100%;} main{width:100%;} .post{width:48%;} }
+@media screen and (max-width:480px){ .post{width:100%;} button{width:100%;} }
+</style>
+<!-- Firebase CDN -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBSoB4NomotkzPQgymHGqDhuy7POreIVzg",
+    authDomain: "daye-sweets-blog.firebaseapp.com",
+    projectId: "daye-sweets-blog",
+    storageBucket: "daye-sweets-blog.appspot.com",
+    messagingSenderId: "175818595197",
+    appId: "1:175818595197:web:f2290dfcf5321bf1930a14"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  let loggedIn = false;
+  let currentPostIndex = null;
+  let allPosts = [];
+  let filteredPosts = [];
+  let currentPage = 1;
+  const postsPerPage = 16;
+
+  const postsContainer = document.getElementById("postsContainer");
+  const postDetail = document.getElementById("postDetail");
+  const editDeleteDiv = document.querySelector(".edit-delete");
+  const writeBtn = document.getElementById("writeBtn");
+  const loginForm = document.getElementById("loginForm");
+  const postForm = document.getElementById("postForm");
+
+  // Load posts from Firestore in real-time
+  const postsCol = collection(db, "posts");
+  onSnapshot(postsCol, (snapshot)=>{
+    allPosts = [];
+    snapshot.forEach(doc => allPosts.push({id: doc.id, ...doc.data()}));
+    renderPosts();
+  });
+
+  function renderPosts(page=1, postsArr=null){
+    const postsList = postsArr || allPosts;
+    postsContainer.innerHTML="";
+    currentPage = page;
+    const start = (page-1)*postsPerPage;
+    const pagePosts = postsList.slice(start, start+postsPerPage);
+
+    let rowDiv=null;
+    pagePosts.forEach((p,i)=>{
+      if(i%4===0){
+        rowDiv=document.createElement("div");
+        rowDiv.style.display="flex"; rowDiv.style.justifyContent="space-between"; rowDiv.style.width="100%"; rowDiv.style.marginBottom="20px";
+        postsContainer.appendChild(rowDiv);
+      }
+      const div=document.createElement("div");
+      div.className="post";
+      div.innerHTML=`<img src="${p.img}" alt=""><h3>${p.title}</h3>`;
+      div.onclick=()=>viewPost(p.id);
+      rowDiv.appendChild(div);
+    });
+    renderPagination(postsList.length);
+  }
+
+  function renderPagination(totalPosts){
+    let pagDiv = document.querySelector(".pagination");
+    if(!pagDiv){
+      pagDiv=document.createElement("div");
+      pagDiv.className="pagination";
+      postsContainer.parentNode.appendChild(pagDiv);
+    }
+    pagDiv.innerHTML="";
+    const totalPages=Math.ceil(totalPosts/postsPerPage);
+    for(let i=1;i<=totalPages;i++){
+      const btn=document.createElement("button");
+      btn.innerText=i;
+      if(i===currentPage) btn.style.fontWeight="bold";
+      btn.onclick=()=>renderPosts(i);
+      pagDiv.appendChild(btn);
+    }
+  }
+
+  async function viewPost(id){
+    const docRef = allPosts.find(p=>p.id===id);
+    document.getElementById("detailImg").src = docRef.img;
+    document.getElementById("detailTitle").innerText = docRef.title;
+    document.getElementById("detailContent").innerText = docRef.content;
+    postDetail.style.display="flex";
+    editDeleteDiv.style.display=loggedIn?"block":"none";
+    window.scrollTo({ top: postDetail.offsetTop - 20, behavior:'smooth' });
+  }
+
+  document.getElementById("writeBtn").addEventListener("click",()=>{
+    loginForm.style.display="block";
+    loginForm.scrollIntoView({behavior:"smooth"});
+  });
+
+  window.login = function(){
+    const u=document.getElementById("username").value;
+    const p=document.getElementById("password").value;
+    if(u==="day" && p==="1004"){
+      loggedIn=true;
+      alert("Login success!");
+      loginForm.style.display="none";
+      postForm.style.display="block";
+      postForm.scrollIntoView({behavior:"smooth"});
+    } else alert("Incorrect ID or password");
+  }
+
+  window.closeLogin = function(){ loginForm.style.display="none"; }
+  window.cancelPost = function(){ postForm.style.display="none"; }
+
+  window.savePost = async function(){
+    const title=document.getElementById("postTitle").value;
+    const content=document.getElementById("postContent").value;
+    const category=document.getElementById("postCategory").value;
+    const fileInput=document.getElementById("postImgFile");
+
+    if(!title || !content || fileInput.files.length===0){
+      alert("Title, Content, and Image required");
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const storageRef = ref(storage, 'images/' + file.name);
+    await uploadBytes(storageRef, file);
+    const imgUrl = await getDownloadURL(storageRef);
+
+    await addDoc(postsCol, {title, content, category, img: imgUrl, author:"day", createdAt: new Date()});
+    postForm.style.display="none";
+    document.getElementById("postTitle").value="";
+    document.getElementById("postContent").value="";
+    document.getElementById("postImgFile").value="";
+  }
+
+  window.closeDetail = function(){ postDetail.style.display="none"; }
+</script>
+
+</head>
+<body>
+<header>Daye's Sweets Blog</header>
+
+<div class="container">
+  <nav>
+    <ul>
+      <li>Home</li>
+      <li>Today's Sweets</li>
+      <li>Categories
+        <ul>
+          <li>Seasonal Specials</li>
+          <li>Drinks</li>
+          <li>Bread</li>
+          <li>Cookie</li>
+          <li>Cake</li>
+          <li>Chocolate</li>
+          <li>Ice Cream</li>
+          <li>Candy</li>
+          <li>Jelly</li>
+          <li>Others</li>
+        </ul>
+      </li>
+      <li>Gallery</li>
+      <li>Daily Life</li>
+      <li>Favorite Shops</li>
+      <li>Recipes</li>
+      <li>Guestbook</li>
+    </ul>
+  </nav>
+
+  <main>
+    <div id="postsContainer"></div>
+
+    <div id="postDetail" class="hidden">
+      <img id="detailImg" src="" alt="">
+      <h3 id="detailTitle"></h3>
+      <p id="detailContent"></p>
+      <div class="edit-delete hidden">
+        <button>Edit</button>
+        <button>Delete</button>
+      </div>
+      <button onclick="closeDetail()">Back</button>
+    </div>
+
+    <button id="writeBtn">Write a post</button>
+
+    <div id="loginForm" class="hidden">
+      <h3>Login</h3>
+      <input type="text" id="username" placeholder="Username"><br>
+      <input type="password" id="password" placeholder="Password"><br>
+      <button onclick="login()">Login</button>
+      <button onclick="closeLogin()">Cancel</button>
+    </div>
+
+    <div id="postForm" class="hidden">
+      <h3>Write a Post</h3>
+      <input type="text" id="postTitle" placeholder="Title"><br>
+      <textarea id="postContent" placeholder="Content"></textarea><br>
+      <input type="file" id="postImgFile" accept="image/*"><br>
+      <select id="postCategory">
+        <option>Seasonal Specials</option>
+        <option>Drinks</option>
+        <option>Bread</option>
+        <option>Cookie</option>
+        <option>Cake</option>
+        <option>Chocolate</option>
+        <option>Ice Cream</option>
+        <option>Candy</option>
+        <option>Jelly</option>
+        <option>Others</option>
+      </select><br>
+      <button onclick="savePost()">Save</button>
+      <button onclick="cancelPost()">Cancel</button>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>
